@@ -332,6 +332,12 @@ class Zappa(object):
         self.cf_template = troposphere.Template()
         self.cf_api_resources = []
         self.cf_parameters = {}
+        if self.boto_session.region_name.startswith('cn-'):
+            self.aws_partition = 'aws-cn'
+        elif self.boto_session.region_name.startswith('us-gov'):
+            self.aws_partition = 'aws-us-gov'
+        else:
+            self.aws_partition = 'aws'
 
     def configure_boto_session_method_kwargs(self, service, kw):
         """Allow for custom endpoint urls for non-AWS (testing and bootleg cloud) deployments"""
@@ -1078,7 +1084,6 @@ class Zappa(object):
             Publish=publish,
             VpcConfig=vpc_config,
             DeadLetterConfig=dead_letter_config,
-            Environment={'Variables': aws_environment_variables},
             KMSKeyArn=aws_kms_key_arn,
             TracingConfig={
                 'Mode': 'Active' if self.xray_tracing else 'PassThrough'
@@ -1093,6 +1098,8 @@ class Zappa(object):
                 'S3Bucket': bucket,
                 'S3Key': s3_key
             }
+        if aws_environment_variables:
+            kwargs['Environment']={'Variables': aws_environment_variables}
 
         response = self.lambda_client.create_function(**kwargs)
 
@@ -1552,7 +1559,7 @@ class Zappa(object):
             description = 'Created automatically by Zappa.'
         restapi.Description = description
         endpoint_configuration = [] if endpoint_configuration is None else endpoint_configuration
-        if self.boto_session.region_name == "us-gov-west-1":
+        if self.aws_partition != "aws":
             endpoint_configuration.append("REGIONAL")
         if endpoint_configuration:
             endpoint = troposphere.apigateway.EndpointConfiguration()
@@ -1563,7 +1570,9 @@ class Zappa(object):
         self.cf_template.add_resource(restapi)
 
         root_id = troposphere.GetAtt(restapi, 'RootResourceId')
-        invocation_prefix = "aws" if self.boto_session.region_name != "us-gov-west-1" else "aws-us-gov"
+
+        invocation_prefix = self.aws_partition
+
         invocations_uri = 'arn:' + invocation_prefix + ':apigateway:' + self.boto_session.region_name + ':lambda:path/2015-03-31/functions/' + lambda_arn + '/invocations'
 
         ##
@@ -2160,6 +2169,8 @@ class Zappa(object):
         self.upload_to_s3(template, working_bucket, disable_progress=disable_progress)
         if self.boto_session.region_name == "us-gov-west-1":
             url = 'https://s3-us-gov-west-1.amazonaws.com/{0}/{1}'.format(working_bucket, template)
+        elif self.aws_partition == 'aws-cn':
+            url = 'https://{0}.s3.{1}.amazonaws.com.cn/{2}'.format(working_bucket, self.boto_session.region_name, template)
         else:
             url = 'https://s3.amazonaws.com/{0}/{1}'.format(working_bucket, template)
 
