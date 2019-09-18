@@ -1811,6 +1811,9 @@ class Zappa(object):
             ]
         )
 
+        if self.aws_partition == 'aws-cn':
+            return "https://{}.execute-api.{}.amazonaws.com.cn/{}".format(api_id, self.boto_session.region_name, stage_name)
+
         return "https://{}.execute-api.{}.amazonaws.com/{}".format(api_id, self.boto_session.region_name, stage_name)
 
     def add_binary_support(self, api_id, cors=False):
@@ -2273,6 +2276,8 @@ class Zappa(object):
         """
         api_id = self.get_api_id(lambda_name)
         if api_id:
+            if self.aws_partition == 'aws-cn':
+                return "https://{}.execute-api.{}.amazonaws.com.cn/{}".format(api_id, self.boto_session.region_name, stage_name)
             return "https://{}.execute-api.{}.amazonaws.com/{}".format(api_id, self.boto_session.region_name, stage_name)
         else:
             return None
