@@ -332,12 +332,12 @@ class Zappa(object):
         self.cf_template = troposphere.Template()
         self.cf_api_resources = []
         self.cf_parameters = {}
-        if self.boto_session.region_name.startswith('cn-'):
-            self.aws_partition = 'aws-cn'
-        elif self.boto_session.region_name.startswith('us-gov'):
-            self.aws_partition = 'aws-us-gov'
-        else:
-            self.aws_partition = 'aws'
+        self.aws_partition = 'aws'
+        if self.boto_session:
+            if self.boto_session.region_name.startswith('cn-'):
+                self.aws_partition = 'aws-cn'
+            elif self.boto_session.region_name.startswith('us-gov'):
+                self.aws_partition = 'aws-us-gov'
 
     def configure_boto_session_method_kwargs(self, service, kw):
         """Allow for custom endpoint urls for non-AWS (testing and bootleg cloud) deployments"""
