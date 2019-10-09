@@ -1223,7 +1223,7 @@ class Zappa(object):
                 if key not in aws_environment_variables:
                     aws_environment_variables[key] = value
 
-        response = self.lambda_client.update_function_configuration(
+        kwargs = dict(
             FunctionName=function_name,
             Runtime=runtime,
             Role=self.credentials_arn,
@@ -1232,12 +1232,16 @@ class Zappa(object):
             Timeout=timeout,
             MemorySize=memory_size,
             VpcConfig=vpc_config,
-            Environment={'Variables': aws_environment_variables},
             KMSKeyArn=aws_kms_key_arn,
             TracingConfig={
                 'Mode': 'Active' if self.xray_tracing else 'PassThrough'
             }
         )
+
+        if aws_environment_variables:
+            kwargs['Environment'] = {'Variables': aws_environment_variables}
+
+        response = self.lambda_client.update_function_configuration(**kwargs)
 
         resource_arn = response['FunctionArn']
 
